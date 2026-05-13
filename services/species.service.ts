@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { DEFAULT_SPECIES } from '@/constants/species';
 import type { Species } from '@/types';
 
 export const speciesService = {
@@ -10,7 +11,7 @@ export const speciesService = {
       .eq('is_active', true)
       .order('name');
     if (error) throw error;
-    return data as Species[];
+    return (data ?? []) as Species[];
   },
 
   async create(species: Omit<Species, 'id' | 'created_at'>) {
@@ -24,8 +25,16 @@ export const speciesService = {
   },
 
   async seedDefaults(ownerId: string) {
-    const { error } = await supabase.rpc('seed_default_species', {
-      p_owner_id: ownerId,
+    const rows = DEFAULT_SPECIES.map((s) => ({
+      owner_id: ownerId,
+      name: s.name,
+      code: s.code,
+      icon: s.icon,
+      is_active: true,
+    }));
+    const { error } = await supabase.from('species').upsert(rows, {
+      onConflict: 'owner_id,code',
+      ignoreDuplicates: true,
     });
     if (error) throw error;
   },

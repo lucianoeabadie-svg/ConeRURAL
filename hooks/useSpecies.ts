@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 
 export function useSpecies() {
   const ownerId = useAuthStore((s) => s.user?.id ?? '');
+
   return useQuery({
     queryKey: ['species', ownerId],
     queryFn: async () => {
@@ -15,6 +16,7 @@ export function useSpecies() {
       return data;
     },
     enabled: !!ownerId,
-    staleTime: 1000 * 60 * 10,
+    staleTime: 0,
+    retry: 3,
   });
 }

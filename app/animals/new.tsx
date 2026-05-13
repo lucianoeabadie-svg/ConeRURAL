@@ -87,10 +87,14 @@ export default function NewAnimalScreen() {
             <View style={styles.section}>
               <Text variant="titleMedium" style={styles.sectionTitle}>¿Qué especie es?</Text>
               {speciesLoading && (
-                <Text style={styles.hint}>Cargando especies...</Text>
+                <Text style={{ color: APP_COLORS.primary, fontWeight: '700', fontSize: 16 }}>
+                  Cargando especies...
+                </Text>
               )}
               {!speciesLoading && (!species || species.length === 0) && (
-                <Text style={styles.hint}>No se encontraron especies. Recargá la página.</Text>
+                <Text style={{ color: APP_COLORS.error, fontWeight: '700', fontSize: 14 }}>
+                  Sin especies (usuario: {ownerId ? ownerId.slice(0, 8) + '...' : 'NO AUTENTICADO'})
+                </Text>
               )}
               {species && species.length > 0 && (
                 <SpeciesSelector

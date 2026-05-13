@@ -1,13 +1,21 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
+import { Redirect } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { APP_COLORS } from '@/constants/theme';
+import { useAuthStore } from '@/store/useAuthStore';
 
 function TabIcon({ name, color, size }: { name: string; color: string; size: number }) {
   return <MaterialCommunityIcons name={name as any} size={size} color={color} />;
 }
 
 export default function TabLayout() {
+  const session = useAuthStore((s) => s.session);
+  const isHydrated = useAuthStore((s) => s.isHydrated);
+
+  if (!isHydrated) return null;
+  if (!session) return <Redirect href="/auth/login" />;
+
   return (
     <Tabs
       screenOptions={{
