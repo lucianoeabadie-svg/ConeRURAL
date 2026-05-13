@@ -22,7 +22,7 @@ const STEPS = ['Especie', 'Datos', 'Ubicación'];
 export default function NewAnimalScreen() {
   const [step, setStep] = useState(0);
   const ownerId = useAuthStore((s) => s.user?.id ?? '');
-  const { data: species } = useSpecies();
+  const { data: species, isLoading: speciesLoading } = useSpecies();
   const { data: sectors } = useSectors();
   const { mutate: createAnimal, isPending } = useCreateAnimal();
 
@@ -86,7 +86,13 @@ export default function NewAnimalScreen() {
           {step === 0 && (
             <View style={styles.section}>
               <Text variant="titleMedium" style={styles.sectionTitle}>¿Qué especie es?</Text>
-              {species && (
+              {speciesLoading && (
+                <Text style={styles.hint}>Cargando especies...</Text>
+              )}
+              {!speciesLoading && (!species || species.length === 0) && (
+                <Text style={styles.hint}>No se encontraron especies. Recargá la página.</Text>
+              )}
+              {species && species.length > 0 && (
                 <SpeciesSelector
                   species={species}
                   selected={selectedSpeciesId}
