@@ -11,6 +11,7 @@ import { APP_COLORS } from '@/constants/theme';
 import { loginSchema } from '@/utils/validators';
 import { FormField } from '@/components/shared/FormField';
 import { signIn } from '@/hooks/useAuth';
+import { speciesService } from '@/services/species.service';
 import type { z } from 'zod';
 
 type FormData = z.infer<typeof loginSchema>;
@@ -27,7 +28,11 @@ export default function LoginScreen() {
     setError('');
     setLoading(true);
     try {
-      await signIn(data.email, data.password);
+      const userId = await signIn(data.email, data.password);
+      if (userId) {
+        // Seedear especies en background, sin bloquear la navegación
+        speciesService.seedDefaults(userId).catch(() => {});
+      }
       router.replace('/(tabs)');
     } catch (e: any) {
       setError('Email o contraseña incorrectos.');

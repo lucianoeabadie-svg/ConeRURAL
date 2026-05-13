@@ -6,11 +6,13 @@ export function useAuthListener() {
   const { setSession, setHydrated } = useAuthStore();
 
   useEffect(() => {
+    // Primero restaurar sesión existente
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setHydrated(true);
     });
 
+    // Luego escuchar cambios de sesión
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
@@ -20,8 +22,9 @@ export function useAuthListener() {
 }
 
 export async function signIn(email: string, password: string) {
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
+  return data.user?.id ?? null;
 }
 
 export async function signUp(email: string, password: string, fullName: string, farmName: string) {
