@@ -30,7 +30,8 @@ export default function RegisterScreen() {
     setError('');
     setLoading(true);
     try {
-      await signUp(data.email, data.password, data.full_name, data.farm_name);
+      const userId = await signUp(data.email, data.password, data.full_name, data.farm_name);
+      if (userId) await speciesService.seedDefaults(userId);
       router.replace('/(tabs)');
     } catch (e: any) {
       setError(e.message ?? 'Error al registrarse.');

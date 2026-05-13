@@ -25,12 +25,13 @@ export async function signIn(email: string, password: string) {
 }
 
 export async function signUp(email: string, password: string, fullName: string, farmName: string) {
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: { data: { full_name: fullName, farm_name: farmName } },
   });
   if (error) throw error;
+  return data.user?.id ?? null;
 }
 
 export async function signOut() {
