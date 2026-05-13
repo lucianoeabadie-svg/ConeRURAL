@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text, Surface } from 'react-native-paper';
 import { APP_COLORS } from '@/constants/theme';
 import type { Species } from '@/types';
@@ -12,14 +12,12 @@ interface Props {
 
 export function SpeciesSelector({ species, selected, onSelect }: Props) {
   return (
-    <FlatList
-      data={species}
-      numColumns={3}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item }) => {
+    <View style={styles.grid}>
+      {species.map((item) => {
         const isSelected = selected === item.id;
         return (
           <TouchableOpacity
+            key={item.id}
             style={styles.itemWrap}
             onPress={() => onSelect(item.id)}
             activeOpacity={0.7}
@@ -40,16 +38,14 @@ export function SpeciesSelector({ species, selected, onSelect }: Props) {
             </Surface>
           </TouchableOpacity>
         );
-      }}
-      columnWrapperStyle={styles.row}
-      scrollEnabled={false}
-    />
+      })}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { gap: 8, marginBottom: 8 },
-  itemWrap: { flex: 1 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  itemWrap: { width: '31%' },
   item: {
     borderRadius: 12,
     padding: 12,
