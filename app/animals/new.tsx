@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, Button, ProgressBar, SegmentedButtons, TextInput } from 'react-native-paper';
+import { Text, Button, ProgressBar, SegmentedButtons, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, Redirect } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { APP_COLORS } from '@/constants/theme';
@@ -21,8 +21,11 @@ const STEPS = ['Especie', 'Datos', 'Ubicación'];
 
 export default function NewAnimalScreen() {
   const [step, setStep] = useState(0);
+  const session = useAuthStore((s) => s.session);
+  const isHydrated = useAuthStore((s) => s.isHydrated);
   const ownerId = useAuthStore((s) => s.user?.id ?? '');
-  const { data: species, isLoading: speciesLoading } = useSpecies();
+
+  const { data: species, isLoading: speciesLoading, error: speciesError, refetch: refetchSpecies } = useSpecies();
   const { data: sectors } = useSectors();
   const { mutate: createAnimal, isPending } = useCreateAnimal();
 
@@ -33,6 +36,9 @@ export default function NewAnimalScreen() {
 
   const selectedSpeciesId = watch('species_id');
   const selectedSectorId = watch('sector_id');
+
+  if (!isHydrated) return <ActivityIndicator style={styles.center} color={APP_COLORS.primary} />;
+  if (!session) return <Redirect href="/auth/login" />;
 
   const onSubmit = (data: FormData) => {
     createAnimal(
@@ -56,9 +62,7 @@ export default function NewAnimalScreen() {
         status_notes: null,
         photo_url: null,
       },
-      {
-        onSuccess: () => router.back(),
-      }
+      { onSuccess: () => router.back() }
     );
   };
 
@@ -83,32 +87,52 @@ export default function NewAnimalScreen() {
         <ProgressBar progress={(step + 1) / STEPS.length} color={APP_COLORS.primary} />
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+
+          {/* PASO 1: ESPECIE */}
           {step === 0 && (
             <View style={styles.section}>
               <Text variant="titleMedium" style={styles.sectionTitle}>¿Qué especie es?</Text>
+
               {speciesLoading && (
-                <Text style={{ color: APP_COLORS.primary, fontWeight: '700', fontSize: 16 }}>
-                  Cargando especies...
-                </Text>
+                <View style={styles.loadingWrap}>
+                  <ActivityIndicator color={APP_COLORS.primary} />
+                  <Text variant="bodyMedium" style={styles.loadingText}>Cargando especies...</Text>
+                </View>
               )}
-              {!speciesLoading && (!species || species.length === 0) && (
-                <Text style={{ color: APP_COLORS.error, fontWeight: '700', fontSize: 14 }}>
-                  Sin especies (usuario: {ownerId ? ownerId.slice(0, 8) + '...' : 'NO AUTENTICADO'})
-                </Text>
+
+              {!speciesLoading && speciesError && (
+                <View style={styles.errorWrap}>
+                  <Text style={styles.errorText}>Error al cargar especies.</Text>
+                  <Button mode="outlined" onPress={() => refetchSpecies()} compact>
+                    Reintentar
+                  </Button>
+                </View>
               )}
-              {species && species.length > 0 && (
+
+              {!speciesLoading && !speciesError && (!species || species.length === 0) && (
+                <View style={styles.errorWrap}>
+                  <Text style={styles.errorText}>No se encontraron especies para tu cuenta.</Text>
+                  <Button mode="outlined" onPress={() => refetchSpecies()} compact>
+                    Reintentar
+                  </Button>
+                </View>
+              )}
+
+              {!speciesLoading && species && species.length > 0 && (
                 <SpeciesSelector
                   species={species}
                   selected={selectedSpeciesId}
                   onSelect={(id) => setValue('species_id', id)}
                 />
               )}
+
               {errors.species_id && (
-                <Text style={styles.error}>{errors.species_id.message}</Text>
+                <Text style={styles.fieldError}>{errors.species_id.message}</Text>
               )}
             </View>
           )}
 
+          {/* PASO 2: DATOS */}
           {step === 1 && (
             <View style={styles.section}>
               <Text variant="titleMedium" style={styles.sectionTitle}>Datos del animal</Text>
@@ -125,7 +149,7 @@ export default function NewAnimalScreen() {
                       buttons={[
                         { value: 'M', label: 'Macho' },
                         { value: 'F', label: 'Hembra' },
-                        { value: 'unknown', label: 'Desconocido' },
+                        { value: 'unknown', label: 'No sé' },
                       ]}
                     />
                   </View>
@@ -141,23 +165,10 @@ export default function NewAnimalScreen() {
             </View>
           )}
 
+          {/* PASO 3: SECTOR */}
           {step === 2 && (
             <View style={styles.section}>
               <Text variant="titleMedium" style={styles.sectionTitle}>¿Dónde va a estar?</Text>
-              {sectors?.map((sector) => (
-                <Button
-                  key={sector.id}
-                  mode={selectedSectorId === sector.id ? 'contained' : 'outlined'}
-                  onPress={() => setValue('sector_id', sector.id)}
-                  style={styles.sectorBtn}
-                  contentStyle={styles.sectorBtnContent}
-                >
-                  {sector.name} ({sector.type})
-                </Button>
-              ))}
-              {!sectors?.length && (
-                <Text style={styles.hint}>No tenés sectores creados. Podés asignarlo después.</Text>
-              )}
               <Button
                 mode={!selectedSectorId ? 'contained' : 'outlined'}
                 onPress={() => setValue('sector_id', undefined)}
@@ -165,8 +176,24 @@ export default function NewAnimalScreen() {
               >
                 Sin sector asignado
               </Button>
+              {sectors?.map((sector) => (
+                <Button
+                  key={sector.id}
+                  mode={selectedSectorId === sector.id ? 'contained' : 'outlined'}
+                  onPress={() => setValue('sector_id', sector.id)}
+                  style={styles.sectorBtn}
+                >
+                  {sector.name} · {sector.type}
+                </Button>
+              ))}
+              {!sectors?.length && (
+                <Text style={styles.hint}>
+                  No tenés sectores creados. Podés asignarlo después desde el menú Sectores.
+                </Text>
+              )}
             </View>
           )}
+
         </ScrollView>
 
         <View style={styles.footer}>
@@ -204,39 +231,32 @@ export default function NewAnimalScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: APP_COLORS.background },
   flex: { flex: 1 },
-  stepBar: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    padding: 16,
-    gap: 32,
-  },
+  center: { flex: 1, justifyContent: 'center' },
+  stepBar: { flexDirection: 'row', justifyContent: 'center', padding: 16, gap: 32 },
   stepItem: { alignItems: 'center', gap: 4 },
   stepDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 28, height: 28, borderRadius: 14,
     backgroundColor: APP_COLORS.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
   stepNum: { fontWeight: '700', color: APP_COLORS.textSecondary },
   stepLabel: { color: APP_COLORS.textSecondary, fontSize: 11 },
   content: { padding: 16, gap: 12, paddingBottom: 20 },
   section: { gap: 12 },
   sectionTitle: { fontWeight: '700', color: APP_COLORS.text },
+  loadingWrap: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 },
+  loadingText: { color: APP_COLORS.textSecondary },
+  errorWrap: { gap: 8, padding: 8 },
+  errorText: { color: APP_COLORS.error, fontWeight: '600' },
+  fieldError: { color: APP_COLORS.error, fontSize: 12 },
   segmentWrap: { gap: 6 },
   fieldLabel: { color: APP_COLORS.textSecondary },
   sectorBtn: { marginBottom: 4 },
-  sectorBtnContent: { paddingVertical: 4 },
-  hint: { color: APP_COLORS.textSecondary, fontStyle: 'italic' },
-  error: { color: APP_COLORS.error, fontSize: 12 },
+  hint: { color: APP_COLORS.textSecondary, fontStyle: 'italic', textAlign: 'center', padding: 16 },
   footer: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 12,
+    flexDirection: 'row', padding: 16, gap: 12,
     backgroundColor: APP_COLORS.surface,
-    borderTopWidth: 1,
-    borderTopColor: APP_COLORS.border,
+    borderTopWidth: 1, borderTopColor: APP_COLORS.border,
   },
   footerBtn: { flex: 1 },
   footerBtnMain: { flex: 2 },

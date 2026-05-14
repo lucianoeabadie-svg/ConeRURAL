@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ANIMAL_EVENT_TYPES } from '@/constants/eventTypes';
@@ -18,15 +18,13 @@ const EVENT_ORDER: AnimalEventType[] = [
 
 export function EventTypeSelector({ selected, onSelect }: Props) {
   return (
-    <FlatList
-      data={EVENT_ORDER}
-      numColumns={3}
-      keyExtractor={(item) => item}
-      renderItem={({ item }) => {
+    <View style={styles.grid}>
+      {EVENT_ORDER.map((item) => {
         const config = ANIMAL_EVENT_TYPES[item];
         const isSelected = selected === item;
         return (
           <TouchableOpacity
+            key={item}
             style={styles.itemWrap}
             onPress={() => onSelect(item)}
             activeOpacity={0.7}
@@ -46,16 +44,14 @@ export function EventTypeSelector({ selected, onSelect }: Props) {
             </View>
           </TouchableOpacity>
         );
-      }}
-      columnWrapperStyle={styles.row}
-      scrollEnabled={false}
-    />
+      })}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { gap: 8, marginBottom: 8 },
-  itemWrap: { flex: 1 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  itemWrap: { width: '31%' },
   item: {
     borderRadius: 10,
     padding: 10,
