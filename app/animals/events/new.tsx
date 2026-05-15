@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, Button } from 'react-native-paper';
+import { Text, Button, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router, Redirect } from 'expo-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { APP_COLORS } from '@/constants/theme';
@@ -18,9 +18,19 @@ import type { z } from 'zod';
 type FormData = z.infer<typeof animalEventSchema>;
 
 export default function NewAnimalEventScreen() {
-  const { animalId, eventType: initialType } = useLocalSearchParams<{ animalId: string; eventType?: string }>();
-  const [eventType, setEventType] = useState<AnimalEventType>((initialType as AnimalEventType) ?? 'note');
+  const { animalId, eventType: initialType } = useLocalSearchParams<{
+    animalId: string;
+    eventType?: string;
+  }>();
+
+  const session = useAuthStore((s) => s.session);
+  const isHydrated = useAuthStore((s) => s.isHydrated);
   const ownerId = useAuthStore((s) => s.user?.id ?? '');
+
+  const [eventType, setEventType] = useState<AnimalEventType>(
+    (initialType as AnimalEventType) ?? 'note'
+  );
+
   const { mutate: addEvent, isPending } = useAddAnimalEvent();
 
   const { control, handleSubmit } = useForm<FormData>({
@@ -30,6 +40,9 @@ export default function NewAnimalEventScreen() {
       event_date: new Date().toISOString().split('T')[0],
     },
   });
+
+  if (!isHydrated) return <ActivityIndicator style={styles.center} color={APP_COLORS.primary} />;
+  if (!session) return <Redirect href="/auth/login" />;
 
   const config = ANIMAL_EVENT_TYPES[eventType];
   const fields = config.fields;
@@ -62,12 +75,20 @@ export default function NewAnimalEventScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['bottom']}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text variant="titleMedium" style={styles.sectionTitle}>Tipo de evento</Text>
           <EventTypeSelector selected={eventType} onSelect={setEventType} />
 
-          <Text variant="titleMedium" style={[styles.sectionTitle, { marginTop: 8 }]}>Detalles</Text>
+          <Text variant="titleMedium" style={[styles.sectionTitle, { marginTop: 8 }]}>
+            Detalles
+          </Text>
 
           <FormField control={control} name="event_date" label="Fecha (AAAA-MM-DD)" />
 
@@ -111,7 +132,11 @@ export default function NewAnimalEventScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          <Button mode="outlined" onPress={() => router.back()} style={styles.footerBtn}>
+          <Button
+            mode="outlined"
+            onPress={() => router.back()}
+            style={styles.footerBtn}
+          >
             Cancelar
           </Button>
           <Button
@@ -132,6 +157,7 @@ export default function NewAnimalEventScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: APP_COLORS.background },
   flex: { flex: 1 },
+  center: { flex: 1, justifyContent: 'center' },
   container: { padding: 16, gap: 12, paddingBottom: 20 },
   sectionTitle: { fontWeight: '700', color: APP_COLORS.text },
   footer: {
