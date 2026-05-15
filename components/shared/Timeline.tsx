@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, FlatList } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Text, Surface } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { APP_COLORS } from '@/constants/theme';
@@ -24,18 +24,16 @@ export function Timeline({ events, onEventPress }: Props) {
   }
 
   return (
-    <FlatList
-      data={events}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item, index }) => (
+    <View>
+      {events.map((item, index) => (
         <TimelineItem
+          key={item.id}
           event={item}
           isLast={index === events.length - 1}
           onPress={onEventPress ? () => onEventPress(item) : undefined}
         />
-      )}
-      scrollEnabled={false}
-    />
+      ))}
+    </View>
   );
 }
 
